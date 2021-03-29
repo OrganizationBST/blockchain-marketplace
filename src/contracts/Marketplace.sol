@@ -9,7 +9,7 @@ contract Marketplace {
         uint id;
         string name;
         uint price;
-        address owner;
+        address payable owner;
         bool purchased;
     }
 
@@ -17,9 +17,17 @@ contract Marketplace {
         uint id,
         string name,
         uint price,
-        address owner,
+        address payable owner,
         bool purchased
     );
+
+    event ProductPurchased(
+        uint id,
+        string name,
+        uint price,
+        address payable owner,
+        bool purchased
+    );   
 
     constructor() public {
         name = "Blockchain Marketplace";
@@ -34,5 +42,23 @@ contract Marketplace {
 
         // trigger an event on the blockchain - msg.sender is the seller
         emit ProductCreated(productCount, _name, _price, msg.sender, false);
+    }
+
+    function purchaseProduct(uint _id) public payable {
+        Product memory _product = products[_id];
+        address payable _seller = _product.owner;
+
+        require(_product.id > 0 && _product.id <= productCount);
+        require(msg.value >= _product.price); // check that there is enough Ether in the transaction
+        require(!_product.purchased);
+        require(_seller != msg.sender); // check that buyer is not the seller
+
+        _product.owner = msg.sender; // transfer ownership to the buyer
+        _product.purchased = true;
+        products[_id] = _product; // update in the products mapping
+
+        address(_seller).transfer(msg.value); // pay the seller by sending them Ether
+
+        emit ProductPurchased(productCount, _product.name, _product.price, msg.sender, true);        
     }
 }
